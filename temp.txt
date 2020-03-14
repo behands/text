@@ -1,0 +1,72 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import csv
+import codecs
+import jieba
+pd.set_option("display.max_colwidth", 200)
+
+
+data=[]
+with open(str('D:/Study/test.txt'),'r', encoding='utf-8', errors='ignore') as f:
+    for line in f:
+        data.append(line)
+news_df = pd.DataFrame({'document':data})
+# removing everything except alphabets`
+news_df['clean_doc'] = news_df['document'].str.replace("[^\u4e00-\u9fa5]+", " ")
+# removing short words
+news_df['clean_doc'] = news_df['clean_doc'].apply(lambda x: ' '.join([w for w in x.split() if len(w)>2]))
+#print(news_df['clean_doc'])
+# 载入停用词
+stopwords = [line.strip() for line in open('D:/stopwords.txt',encoding='UTF-8').readlines()]
+#分词
+# tokenization
+detokenized_doc = []
+for i in range(len(news_df['clean_doc'])):
+    t=jieba.cut(news_df['clean_doc'][i])
+    tt=' '.join(t)
+    ttt=''
+    for j in tt:
+        if j not in stopwords:
+            ttt+=j
+            #ttt+=" "
+    detokenized_doc.append(ttt)
+print(detokenized_doc)
+# remove stop-words
+#tokenized_doc = tokenized_doc.apply(lambda x: [item for item in x if item not in stop_words])
+#去停用词
+# de-tokenization
+
+    
+news_df['clean_doc'] = detokenized_doc
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+vectorizer = TfidfVectorizer(stop_words=stopwords, 
+max_features= 1000, # keep top 1000 terms 
+max_df = 0.5, 
+smooth_idf=True)
+
+X = vectorizer.fit_transform(news_df['clean_doc'])
+
+print(X.shape) # check shape of the document-term matrix
+
+from sklearn.decomposition import TruncatedSVD
+
+# SVD represent documents and terms in vectors 
+svd_model = TruncatedSVD(n_components=28, algorithm='randomized', n_iter=100, random_state=122)
+
+svd_model.fit(X)
+
+print(len(svd_model.components_))
+terms = vectorizer.get_feature_names()
+
+for i, comp in enumerate(svd_model.components_):
+    terms_comp = zip(terms, comp)
+    sorted_terms = sorted(terms_comp, key= lambda x:x[1], reverse=True)[:7]
+    print("Topic "+str(i)+": ",end=' ')
+    for t in sorted_terms:
+        print(t[0],end=' ')
+       # print(" ")
+    print(" ")
